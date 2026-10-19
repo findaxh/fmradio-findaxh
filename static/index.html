@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>FM 网络电台</title>
+  <link rel="stylesheet" href="static/style.css" />
+  <script src="https://cdn.jsdelivr.net/npm/hls.js@1/dist/hls.min.js"></script>
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand">
+      <span class="logo">📻</span>
+      <h1>FM 网络电台<span class="byline"> by 王雪豪</span></h1>
+    </div>
+  </header>
+
+  <div class="toolbar">
+    <div class="controls">
+      <select id="country" title="选择国家/地区">
+        <option value="CN">中国</option>
+        <option value="">全球</option>
+        <option value="US">美国</option>
+        <option value="JP">日本</option>
+        <option value="GB">英国</option>
+        <option value="KR">韩国</option>
+      </select>
+      <input id="search" type="search" placeholder="搜索电台名/关键词…" autocomplete="off" />
+      <button id="testBtn" class="test-btn" title="检测当前电台源是否存活">检测源</button>
+    </div>
+    <div class="chips-label">区域</div>
+    <div id="regionChips" class="chips"></div>
+    <div class="chips-label">类别</div>
+    <div id="catChips" class="chips"></div>
+  </div>
+
+  <main id="stationList" class="station-list"></main>
+
+  <footer class="player">
+    <button id="playBtn" class="play-btn" aria-label="播放/暂停">▶</button>
+    <div class="now">
+      <div class="now-name" id="nowName">未选择电台</div>
+      <div class="now-status" id="nowStatus">加载中…</div>
+    </div>
+    <div class="vol">
+      <span>🔊</span>
+      <input id="volume" type="range" min="0" max="1" step="0.01" value="1" />
+    </div>
+  </footer>
+
+  <audio id="audio" preload="none"></audio>
+  <script src="static/app.js"></script>
+</body>
+</html>
