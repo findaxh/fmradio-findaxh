@@ -326,7 +326,7 @@ def healthz():
 
 
 if __name__ == "__main__":
-    port = int(os.environ.get("PORT", "8000"))
+    port = int(os.environ.get("PORT", "6123"))  # 默认端口 6123
     if RB_PROXY_MODE == "direct":
         print("[FM] 网络模式: 直连（不使用任何代理，已忽略系统/环境变量代理）")
         if DETECTED_PROXIES:

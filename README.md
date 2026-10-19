@@ -20,29 +20,78 @@ A web-based FM radio player. Station data comes from the open-source [Radio Brow
 - ▶️ **浏览器直连播放**：HLS(.m3u8) 用 hls.js，普通音频(MP3/AAC) 用原生 `<audio>`
 - 🧹 **自动去重**：按 url / stationuuid / 归一化名称三级去重，消除“同一个台出现多次”
 - 🖥️ **跨平台部署**：Windows 与 Ubuntu 均可；支持通过 frp 从公网访问（可选，本地使用无需配置）
+- 🔧 **后台守护 + 开机自启**：一条命令后台启动/停止/重启/查状态/看日志；Linux 支持 `./run.sh enable` 一键注册 systemd 开机自启
 - 📱 **响应式布局**：自适应桌面与手机浏览器（平板/手机/小屏手机三档断点）
 
 ## 🚀 快速开始 / Quick Start
 
+默认端口 **6123**。首次运行会自动安装依赖 `flask` / `requests`。
+
 ### Windows
 
-双击 `run.bat`（首次运行会自动安装 Flask / requests），浏览器打开 <http://localhost:8000/>。
+双击 `run.bat` 即以**后台方式**启动（命令行窗口可以直接关闭），浏览器打开 <http://localhost:6123/>。
+
+```bat
+run.bat          :: 后台启动（默认）
+run.bat stop     :: 停止
+run.bat restart  :: 重启
+run.bat status   :: 查看状态
+run.bat logs     :: 实时日志（Ctrl+C 只退出查看）
+run.bat run      :: 前台运行（调试）
+```
+
+Windows 开机自启：用「任务计划程序」创建基本任务，触发器选「计算机启动时」，操作为
+`cmd /c "cd /d <项目目录> && run.bat"`，并勾选「不管用户是否登录都要运行」。
 
 ### Ubuntu / Linux
 
 ```bash
 chmod +x run.sh
-./run.sh
+./run.sh              # 后台启动（默认，可关闭终端）
 ```
 
-首次运行会自动创建 `.venv` 并安装依赖；`PORT=9000 ./run.sh` 可改端口。
+**不创建任何虚拟环境**，直接使用已存在的 Python 环境。默认使用 `run.sh` 顶部的 `DEFAULT_PY`：
+
+```bash
+DEFAULT_PY="/home/japp/miniconda3/envs/pyServer/bin/python"
+```
+
+切换方式（优先级：显式指定 > 默认环境 > `python3` > `python`）：
+
+```bash
+./run.sh                                                 # 用默认环境
+PYTHON=/opt/conda/envs/other/bin/python ./run.sh         # 临时覆盖
+conda activate myenv && PYTHON="$(command -v python)" ./run.sh   # 跟随已激活的 conda 环境
+PORT=9000 ./run.sh                                       # 改端口
+```
+
+脚本会打印实际使用的解释器与版本，依赖 `flask` / `requests` 缺失时才安装到该环境。
+默认路径不存在时会打印警告并自动回退到 `python3` / `python`。
+
+#### 后台运行与开机自启（Linux）
+
+```bash
+./run.sh              # 后台启动（默认，可关闭终端）
+./run.sh stop         # 停止
+./run.sh restart      # 重启
+./run.sh status       # 查看运行状态
+./run.sh logs         # 实时日志（Ctrl+C 只退出查看，不停服务）
+./run.sh run          # 前台运行（调试用）
+./run.sh enable       # 设置开机自启（systemd）
+./run.sh disable      # 取消开机自启
+```
+
+- 后台进程用 `nohup` 启动，PID 记录在 `.fmradio.pid`，日志追加到 `fmradio.log`。
+- `./run.sh enable` 会自动生成 systemd 单元（写入当前 `WorkingDirectory`、`PORT` 与解释器路径）、
+  执行 `systemctl enable` 并立即启动，无需手动改 `fmradio.service`。
+- 无 systemd 的环境改用 cron：`@reboot cd <项目目录> && ./run.sh`。
 
 ### 通过 frp 公网访问（可选，本地不部署也可以正常使用）/ Public access via frp (optional)
 
-> **可选项。** 只在本地使用时，直接访问 <http://localhost:8000/> 即可，无需做任何公网配置，功能完全一致。  
+> **可选项。** 只在本地使用时，直接访问 <http://localhost:6123/> 即可，无需做任何公网配置，功能完全一致。  
 > 本节仅在需要让局域网以外的设备（如手机流量、异地电脑）访问时才需要。
 
-如果希望从外网访问，把本机 `8000` 端口通过 frp（或其他内网穿透工具）映射到你自己的服务器公网端口，之后通过  
+如果希望从外网访问，把本机 `6123` 端口通过 frp（或其他内网穿透工具）映射到你自己的服务器公网端口，之后通过  
 `http://<公网IP>:<映射端口>/` 访问。frpc 侧示例：
 
 ```toml
@@ -50,8 +99,8 @@ chmod +x run.sh
 name = "fmradio"
 type = "tcp"
 localIP = "127.0.0.1"
-localPort = 8000
-remotePort = 8000
+localPort = 6123
+remotePort = 6123
 ```
 
 注意：
@@ -59,14 +108,16 @@ remotePort = 8000
 - 播放采用浏览器直连电台源站，音频流量不经过 frp，对服务器带宽压力很小。
 - 若公网打开页面空白但本地正常，通常是没有映射端口或防火墙未放行 `remotePort`。
 
-> **Optional.** For local use just open <http://localhost:8000/> — no public-network setup needed and all features work.  
+> **Optional.** For local use just open <http://localhost:6123/> — no public-network setup needed and all features work.  
 > This section only applies if you want to reach the service from outside your LAN.
 
-### 开机自启（systemd，Ubuntu）
+### 开机自启（systemd，Ubuntu）— 手动方式
+
+推荐直接用 `./run.sh enable`（见上节）。也可以手动安装模板：
 
 ```bash
 sudo cp fmradio.service /etc/systemd/system/fmradio.service
-# 编辑其中的 User 与 WorkingDirectory 为实际值后：
+# 编辑 User、WorkingDirectory，以及 ExecStart 里的 Python 解释器路径：
 sudo systemctl daemon-reload && sudo systemctl enable --now fmradio
 ```
 
@@ -74,7 +125,7 @@ sudo systemctl daemon-reload && sudo systemctl enable --now fmradio
 
 | 项       | 说明                                                                                                                                  |
 | ------- | ----------------------------------------------------------------------------------------------------------------------------------- |
-| 端口      | 环境变量 `PORT`，默认 `8000`                                                                                                               |
+| 端口      | 环境变量 `PORT`，默认 `6123`                                                                                                               |
 | 数据源     | Radio Browser API（多镜像自动回退：de1 / de2 / at1 / all）                                                                                    |
 | 播放模式    | 直连（浏览器直接连接电台源站）                                                                                                                     |
 | 出网方式    | **纯直连（默认）**：`RB_PROXY_MODE=direct`，完全忽略系统代理与 `HTTP(S)_PROXY` 环境变量，不使用 Clash Verge 等任何代理。仅在特殊网络下才改为 `system`（只走代理）或 `auto`（直连失败回退代理） |
@@ -115,9 +166,9 @@ has no effect. Set `RB_PROXY_MODE=system` only if the host can reach the interne
 ├── proxy_utils.py       # URL 校验与 SSRF 防护
 ├── requirements.txt     # Python 依赖（Flask, requests）
 ├── static/              # 前端页面（index.html / style.css / app.js）
-├── run.bat              # Windows 一键启动
-├── run.sh               # Ubuntu/Linux 一键启动（自动建 venv）
-├── fmradio.service      # systemd 服务模板（Ubuntu 开机自启）
+├── run.bat              # Windows 启动脚本（默认后台；start/stop/restart/status/logs/run）
+├── run.sh               # Ubuntu/Linux 启动脚本（默认后台 + stop/restart/status/logs/run/enable/disable）
+├── fmradio.service      # systemd 服务模板（手动安装用；推荐 ./run.sh enable）
 ├── LICENSE              # Apache License 2.0
 └── README.md
 ```

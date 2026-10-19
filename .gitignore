@@ -1,3 +1,9 @@
+# 运行时产物（后台运行/日志）
+.fmradio.pid
+fmradio.log
+fmradio.err.log
+nohup.out
+
 # Python
 __pycache__/
 *.pyc

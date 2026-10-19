@@ -8,12 +8,13 @@ Type=simple
 User=ubuntu
 # 改成实际部署目录
 WorkingDirectory=/opt/fmradio
-Environment=PORT=8000
+Environment=PORT=6123
 # 强制直连：不使用任何系统/环境代理
 Environment=RB_PROXY_MODE=direct
 Environment=HTTP_PROXY=
 Environment=HTTPS_PROXY=
-ExecStart=/opt/fmradio/.venv/bin/python app.py
+# 不创建虚拟环境：直接指定要用的 Python 解释器
+ExecStart=/home/japp/miniconda3/envs/pyServer/bin/python app.py
 Restart=on-failure
 RestartSec=5
 
