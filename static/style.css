@@ -27,11 +27,13 @@ body { display: flex; flex-direction: column; min-height: 100vh; }
   display: flex;
   align-items: center;
   justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 10px;
   padding: 14px 20px;
   background: linear-gradient(90deg, #161d26, #1a212b);
   border-bottom: 1px solid var(--border);
 }
-.brand { display: flex; align-items: center; gap: 10px; }
+.brand { display: flex; align-items: center; gap: 10px; min-width: 0; }
 .brand .logo { font-size: 26px; }
 .brand h1 { font-size: 18px; margin: 0; letter-spacing: 1px; }
 .brand h1 .byline {
@@ -45,6 +47,44 @@ body { display: flex; flex-direction: column; min-height: 100vh; }
   letter-spacing: 0.5px;
   white-space: nowrap;
 }
+
+/* 顶部导航（电台 / 电视频道 / 视频节目） */
+.nav { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.nav-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 14px;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  background: var(--panel);
+  color: var(--muted);
+  font-size: 13px;
+  text-decoration: none;
+  white-space: nowrap;
+  transition: all .15s;
+}
+.nav-btn:hover { color: var(--text); border-color: var(--accent-2); }
+.nav-btn.active {
+  background: var(--accent-2);
+  border-color: var(--accent-2);
+  color: #04201c;
+  font-weight: 600;
+}
+
+.subbar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  padding: 10px 20px;
+  border-bottom: 1px solid var(--border);
+  background: var(--bg);
+  font-size: 12px;
+  color: var(--muted);
+}
+.subbar a { color: var(--accent-2); text-decoration: none; }
+.subbar a:hover { text-decoration: underline; }
 
 .toolbar {
   padding: 12px 20px;
@@ -90,6 +130,30 @@ body { display: flex; flex-direction: column; min-height: 100vh; }
   flex: 0 0 auto;
 }
 .test-btn:hover { border-color: var(--accent-2); color: var(--accent-2); }
+.test-btn:disabled { opacity: .5; cursor: default; }
+
+/* 探测进度条 */
+.probe-bar {
+  display: none;
+  align-items: center;
+  gap: 10px;
+  margin-top: 10px;
+}
+.probe-track {
+  flex: 1;
+  height: 6px;
+  border-radius: 999px;
+  background: var(--panel-2);
+  overflow: hidden;
+}
+.probe-fill {
+  height: 100%;
+  width: 0;
+  border-radius: 999px;
+  background: linear-gradient(90deg, var(--accent), var(--accent-2));
+  transition: width .25s;
+}
+.probe-text { font-size: 12px; color: var(--muted); white-space: nowrap; }
 
 .chips-label {
   font-size: 12px;
@@ -100,6 +164,7 @@ body { display: flex; flex-direction: column; min-height: 100vh; }
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
+  min-width: 0;
 }
 .chip {
   background: var(--panel);
@@ -110,6 +175,8 @@ body { display: flex; flex-direction: column; min-height: 100vh; }
   font-size: 13px;
   cursor: pointer;
   transition: all .15s;
+  flex: 0 0 auto;
+  white-space: nowrap;
 }
 .chip:hover { color: var(--text); border-color: var(--accent); }
 .chip.active { background: var(--accent-2); color: #04201c; border-color: var(--accent-2); font-weight: 600; }
@@ -234,4 +301,284 @@ body { display: flex; flex-direction: column; min-height: 100vh; }
   .vol span { display: none; }
   .vol input { width: 56px; }
   .play-btn { width: 40px; height: 40px; flex-basis: 40px; }
+}
+
+/* ============ 分类标签：手机上一行横向滚动，避免堆成一大坨 ============ */
+@media (max-width: 600px) {
+  .chips {
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+    padding-bottom: 2px;
+  }
+  .chips::-webkit-scrollbar { display: none; }
+  .controls { flex-wrap: wrap; }
+  .controls select { flex: 0 0 auto; }
+  .controls input { flex: 1 1 140px; min-width: 0; }
+}
+
+/* ============ 电视频道页 ============ */
+.tv-grid {
+  flex: 1;
+  padding: 14px 20px 160px;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  gap: 12px;
+  align-content: start;
+}
+.tv-card {
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 12px 10px;
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  transition: all .15s;
+  text-align: center;
+}
+.tv-card:hover { border-color: var(--accent); transform: translateY(-1px); }
+.tv-card.playing { border-color: var(--accent); background: var(--panel-2); box-shadow: 0 0 0 1px var(--accent) inset; }
+.tv-card.dead { opacity: .45; }
+.tv-card.dead:hover { opacity: .8; }
+.tv-logo {
+  width: 64px; height: 64px;
+  border-radius: 12px;
+  background: var(--panel-2);
+  border: 1px solid var(--border);
+  display: flex; align-items: center; justify-content: center;
+  overflow: hidden;
+  flex: 0 0 auto;
+}
+.tv-logo img { width: 100%; height: 100%; object-fit: contain; padding: 4px; }
+.tv-logo .fallback { font-size: 18px; font-weight: 700; color: var(--accent-2); }
+.tv-card .tname {
+  font-size: 13px;
+  line-height: 1.3;
+  word-break: break-all;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+.tv-card .tsub { font-size: 11px; color: var(--muted); }
+
+/* ============ 视频节目页 ============ */
+.prog-list {
+  flex: 1;
+  padding: 14px 20px 170px;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: 14px;
+  align-content: start;
+}
+.prog-card {
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  overflow: hidden;
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  transition: all .15s;
+}
+.prog-card:hover { border-color: var(--accent); transform: translateY(-1px); }
+.prog-cover {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  background: var(--panel-2);
+  overflow: hidden;
+}
+.prog-cover img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.prog-cover .ph { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; color: var(--muted); font-size: 12px; }
+.prog-cover .dur {
+  position: absolute; right: 8px; bottom: 8px;
+  background: rgba(0,0,0,.72);
+  color: #fff;
+  font-size: 11px;
+  padding: 2px 6px;
+  border-radius: 4px;
+}
+.prog-cover .badge {
+  position: absolute; left: 8px; top: 8px;
+  background: var(--accent);
+  color: #fff;
+  font-size: 11px;
+  padding: 2px 8px;
+  border-radius: 999px;
+}
+.prog-body { padding: 10px 12px 12px; display: flex; flex-direction: column; gap: 6px; }
+.prog-title {
+  font-size: 14px;
+  line-height: 1.4;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+.prog-meta { font-size: 11px; color: var(--muted); }
+
+/* ============ 视频节目页：左播放器(2/3) + 右侧列表(1/3) ============ */
+.prog-layout {
+  flex: 1;
+  display: grid;
+  grid-template-columns: 2fr 1fr;
+  gap: 16px;
+  padding: 16px 20px 24px;
+  align-items: start;
+}
+.prog-stage {
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  overflow: hidden;
+}
+.stage-video {
+  width: 100%;
+  background: #000;
+  aspect-ratio: 16 / 9;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.stage-video video {
+  width: 100%;
+  height: 100%;
+  max-height: 62vh;
+  display: block;
+  background: #000;
+}
+.stage-info {
+  padding: 14px 18px 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.stage-title {
+  font-size: 17px;
+  font-weight: 600;
+  line-height: 1.4;
+  word-break: break-word;
+}
+.stage-meta { font-size: 12px; color: var(--muted); }
+.stage-status { font-size: 13px; color: var(--accent-2); }
+
+.prog-side {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  min-width: 0;
+  position: sticky;
+  top: 76px;
+}
+.side-block {
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 12px 14px;
+  min-width: 0;
+}
+.side-label {
+  font-size: 12px;
+  color: var(--muted);
+  margin-bottom: 8px;
+}
+.side-hint {
+  font-size: 12px;
+  color: var(--muted);
+  padding: 14px 4px;
+  text-align: center;
+}
+.side-list-block { flex: 1; }
+.side-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  max-height: calc(100vh - 260px);
+  overflow-y: auto;
+  padding-right: 4px;
+}
+.side-item {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  padding: 8px;
+  border: 1px solid transparent;
+  border-radius: 10px;
+  cursor: pointer;
+  transition: all .15s;
+}
+.side-item:hover { background: var(--panel-2); border-color: var(--border); }
+.side-item.active { background: var(--panel-2); border-color: var(--accent); }
+.side-thumb {
+  width: 88px;
+  height: 50px;
+  flex: 0 0 88px;
+  border-radius: 6px;
+  overflow: hidden;
+  background: var(--panel-2);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 18px;
+  color: var(--muted);
+}
+.side-thumb img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.side-body { min-width: 0; flex: 1; }
+.side-title {
+  font-size: 13px;
+  line-height: 1.35;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+.side-meta { font-size: 11px; color: var(--muted); margin-top: 3px; }
+
+/* 播放器（TV / 节目共用） */
+.media-bar {
+  position: fixed;
+  left: 0; right: 0; bottom: 0;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 12px 20px;
+  background: rgba(20, 27, 36, 0.96);
+  backdrop-filter: blur(8px);
+  border-top: 1px solid var(--border);
+  z-index: 6;
+}
+.media-bar video { max-width: 320px; max-height: 120px; background: #000; border-radius: 8px; }
+
+@media (max-width: 600px) {
+  .prog-layout {
+    grid-template-columns: 1fr;
+    padding: 12px 14px 24px;
+    gap: 12px;
+  }
+  .prog-side { position: static; }
+  .side-list { max-height: none; }
+  .stage-video { aspect-ratio: 16 / 9; }
+  .stage-video video { max-height: 40vh; }
+  .side-thumb { width: 72px; height: 42px; flex-basis: 72px; }
+  .tv-grid { grid-template-columns: repeat(auto-fill, minmax(110px, 1fr)); padding: 12px 14px 170px; gap: 10px; }
+  .tv-logo { width: 52px; height: 52px; }
+  .tv-card .tname { font-size: 12px; }
+  .prog-list { grid-template-columns: 1fr 1fr; padding: 12px 14px 180px; gap: 10px; }
+  .prog-body { padding: 8px 10px 10px; }
+  .prog-title { font-size: 13px; }
+  .media-bar { padding: 10px 14px; gap: 10px; flex-wrap: wrap; }
+  .media-bar video { max-width: 46vw; max-height: 84px; }
+  .topbar { padding: 12px 14px; }
+  .brand h1 { font-size: 16px; }
+  .subbar { padding: 8px 14px; }
+}
+
+@media (max-width: 420px) {
+  .prog-list { grid-template-columns: 1fr; }
+  .tv-grid { grid-template-columns: 1fr 1fr; }
 }

@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-"""代理相关纯标准库工具：SSRF 防护、URL 校验、HLS 清单重写。
+"""代理相关纯标准库工具：SSRF 防护与 URL 校验。
 独立成模块，便于在不依赖 Flask 的情况下单元测试。
 """
 import ipaddress
@@ -56,19 +56,3 @@ def safe_url(raw: str):
     if SSRF_GUARD and is_blocked_host(p.hostname or ""):
         return None
     return raw
-
-
-def rewrite_m3u8(text: str, base_url: str) -> str:
-    """将 m3u8 中的相对/绝对切片地址重写为经本服务代理的地址。"""
-    out = []
-    for line in text.splitlines():
-        s = line.strip()
-        if not s or s.startswith("#"):
-            out.append(line)
-            continue
-        if s.startswith("http://") or s.startswith("https://"):
-            abs_url = s
-        else:
-            abs_url = urllib.parse.urljoin(base_url, s)
-        out.append("/proxy?url=" + urllib.parse.quote(abs_url, safe=""))
-    return "\n".join(out)

@@ -20,6 +20,7 @@ from requests.adapters import HTTPAdapter
 
 from proxy_utils import USER_AGENT, safe_url
 from tagging import tag_station, norm_name
+import tv as tvmod
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 STATIC_DIR = os.path.join(BASE_DIR, "static")
@@ -162,6 +163,123 @@ def index():
     return send_from_directory(STATIC_DIR, "index.html")
 
 
+@app.route("/tv")
+def tv_page():
+    return send_from_directory(STATIC_DIR, "tv.html")
+
+
+@app.route("/programs")
+def programs_page():
+    return send_from_directory(STATIC_DIR, "programs.html")
+
+
+# ---------------- TV 频道（iptv-org 等公开 m3u 源） ----------------
+@app.route("/api/tv/channels")
+def api_tv_channels():
+    probe = request.args.get("probe", "") in ("1", "true", "yes")
+    refresh = request.args.get("refresh", "") in ("1", "true", "yes")
+    data = tvmod.get_channels(probe=probe, refresh=refresh)
+    return jsonify(data)
+
+
+@app.route("/api/tv/channels/stream")
+def api_tv_channels_stream():
+    """SSE：先返回频道列表，再流式汇报探测进度，最后返回可用频道。
+
+    事件类型：
+      {"phase":"loading"}                正在拉取播放列表
+      {"phase":"loaded","count":N}       列表就绪
+      {"phase":"probing","done":d,"total":t}  探测进度
+      {"phase":"done", ...完整payload...}
+    """
+    refresh = request.args.get("refresh", "") in ("1", "true", "yes")
+
+    def gen():
+        yield _sse({"phase": "loading"})
+        payload = tvmod.get_channels(force=refresh, refresh=refresh)
+        if not payload.get("ok"):
+            yield _sse({"phase": "error", "error": payload.get("error") or "无可用频道"})
+            return
+        yield _sse({"phase": "loaded", "count": payload["count"]})
+
+        # 探测阶段：任何异常都要转成 error 事件推给前端。
+        # 否则生成器直接中断，浏览器只看到流被掐断，页面会永远停在
+        # 「正在测试频道」的状态，没有任何错误提示。
+        live = {}
+        try:
+            pgen = tvmod.probe_channels_iter(payload["channels"], refresh=refresh)
+            while True:
+                done, total = next(pgen)
+                yield _sse({"phase": "probing", "done": done, "total": total})
+        except StopIteration as e:
+            live = e.value or {}
+        except Exception as e:
+            yield _sse({"phase": "error", "error": f"频道测试中断：{type(e).__name__}: {e}"})
+            return
+
+        for c in payload["channels"]:
+            best = None
+            for u in (c.get("urls") or [])[:tvmod.MAX_URLS_PER_CHANNEL]:
+                st = live.get(u)
+                if not st:
+                    continue
+                if st["ok"] and (best is None or st["ms"] < best[1]):
+                    best = (u, st["ms"])
+            c["live"] = bool(best)
+            c["best_url"] = best[0] if best else c["url"]
+            c["latency_ms"] = best[1] if best else None
+        payload["probed"] = True
+        yield _sse(dict(payload, phase="done"))
+
+    return Response(gen(), mimetype="text/event-stream",
+                    headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"})
+
+
+def _sse(obj):
+    return "data: " + json.dumps(obj, ensure_ascii=False) + "\n\n"
+
+
+# ---------------- 视频节目（新闻联播 / 北京新闻） ----------------
+@app.route("/api/tv/programs")
+def api_tv_programs():
+    src = request.args.get("src", "xwlb")
+    date = request.args.get("date", "")
+    meta = tvmod.PROGRAMS.get(src)
+    if not meta:
+        return (
+            jsonify(
+                {
+                    "ok": False,
+                    "error": "未知节目源",
+                    "available": [
+                        {"key": k, "name": v["name"], "desc": v["desc"]}
+                        for k, v in tvmod.PROGRAMS.items()
+                    ],
+                }
+            ),
+            400,
+        )
+    if src == "xwlb":
+        data = meta["getter"](date=date or None)
+        if data.get("ok"):
+            data["dates"] = tvmod.get_xwlb_dates()["dates"]
+    else:
+        data = meta["getter"]()
+    if data.get("ok"):
+        data["meta"] = {"key": src, "name": meta["name"], "desc": meta["desc"]}
+    return jsonify(data)
+
+
+@app.route("/api/tv/play")
+def api_tv_play():
+    """把节目详情页解析成可直接播放的媒体地址。"""
+    url = request.args.get("url", "")
+    gid = request.args.get("gid", "")
+    if not url.startswith("http"):
+        return jsonify({"ok": False, "error": "invalid url"}), 400
+    return jsonify(tvmod.resolve_video(url, gid=gid))
+
+
 @app.route("/api/radiobrowser")
 def api_radiobrowser():
     """查询 Radio Browser 开源电台索引（需自定义 User-Agent）。
@@ -294,13 +412,16 @@ def api_probe():
     last_err = None
     for cname, sess in _channels():
         try:
+            # 不跟随重定向：safe_url 只校验了用户传入的初始地址，若允许跟随，
+            # 一个公网地址 302 跳到 169.254.169.4 之类的内网元数据接口就能绕过
+            # SSRF 防护。探测只需要知道「服务器有没有响应」，不需要拿最终内容。
             resp = sess.get(
                 url, headers=headers, stream=True,
-                timeout=(6, 12), allow_redirects=True,
+                timeout=(6, 12), allow_redirects=False,
             )
             status = resp.status_code
             ctype = resp.headers.get("Content-Type", "")
-            final = resp.url
+            loc = resp.headers.get("Location", "")
             try:
                 next(resp.iter_content(1024))
             except Exception:
@@ -311,7 +432,8 @@ def api_probe():
                     "ok": status < 400,
                     "status": status,
                     "content_type": ctype,
-                    "redirected": final != url,
+                    # 3xx 时给出跳转目标，便于判断是不是 CDN 的正常跳转
+                    "location": loc if 300 <= status < 400 else "",
                     "channel": cname,
                 }
             )

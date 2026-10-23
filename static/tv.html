@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>电视频道 - FM 网络电台</title>
+  <link rel="stylesheet" href="/static/style.css" />
+  <script src="https://cdn.jsdelivr.net/npm/hls.js@1/dist/hls.min.js"></script>
+<script>window.Hls||document.write('<script src="https://unpkg.com/hls.js@1/dist/hls.min.js"><\/script>');</script>
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand">
+      <span class="logo">📺</span>
+      <h1>电视频道<span class="byline"> by 王雪豪</span></h1>
+    </div>
+    <nav class="nav">
+      <a class="nav-btn" href="/">📻 电台</a>
+      <a class="nav-btn active" href="/tv">📺 电视频道</a>
+      <a class="nav-btn" href="/programs">🎬 视频节目</a>
+    </nav>
+  </header>
+
+  <div class="toolbar">
+    <div class="controls">
+      <input id="search" type="search" placeholder="搜索电视台名 / 关键词…" autocomplete="off" />
+      <button id="testBtn" class="test-btn" title="检测当前频道源是否存活">检测源</button>
+      <button id="refreshBtn" class="test-btn" title="重新测试所有频道能否连接，并只显示可播放的频道">↻ 刷新可用频道</button>
+    </div>
+    <div class="probe-bar" id="probeBar">
+      <div class="probe-track"><div class="probe-fill" id="probeFill"></div></div>
+      <span class="probe-text" id="probeText">正在加载频道列表…</span>
+    </div>
+    <div class="chips-label">分类</div>
+    <div id="catChips" class="chips"></div>
+  </div>
+
+  <main id="tvList" class="tv-grid"></main>
+
+  <footer class="media-bar">
+    <video id="video" controls playsinline preload="none"></video>
+    <div class="now">
+      <div class="now-name" id="nowName">未选择频道</div>
+      <div class="now-status" id="nowStatus">加载中…</div>
+    </div>
+  </footer>
+
+  <script src="/static/tv.js"></script>
+</body>
+</html>
